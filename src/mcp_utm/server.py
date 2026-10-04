@@ -7,14 +7,31 @@ the AppleScript ``update configuration`` API.
 
 from __future__ import annotations
 
+from functools import wraps
+import subprocess
+
 from mcp.server import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 
 from . import applescript as utm
 from .commands import run_vm_command, get_vm_command_result
 
 mcp = MCPServer("utm")
-mcp.tool(structured_output=True)(run_vm_command)
-mcp.tool(structured_output=True)(get_vm_command_result)
+
+
+def _guest_tool(function):
+    """Return expected validation/UTM errors to clients instead of hiding them."""
+    @wraps(function)
+    async def invoke(*args, **kwargs):
+        try:
+            return await function(*args, **kwargs)
+        except (ValueError, RuntimeError, subprocess.TimeoutExpired) as exc:
+            raise ToolError(str(exc)) from exc
+    return invoke
+
+
+mcp.tool(structured_output=True)(_guest_tool(run_vm_command))
+mcp.tool(structured_output=True)(_guest_tool(get_vm_command_result))
 
 
 @mcp.tool()

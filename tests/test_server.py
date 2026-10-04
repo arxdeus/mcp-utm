@@ -8,6 +8,7 @@ import pytest
 from mcp_utm.server import mcp
 from mcp_utm.applescript import VMInfo, VMConfig, DriveInfo
 from mcp_utm import commands
+from mcp.server.mcpserver.exceptions import ToolError
 
 
 class TestToolsRegistered:
@@ -29,6 +30,16 @@ class TestToolsRegistered:
 
 
 class TestGuestCommandDispatch:
+    def test_agent_failure_is_actionable_tool_error(self):
+        with patch.object(commands.utm, "get_vm_status", return_value="started"), \
+             patch.object(commands.utm, "_run", side_effect=RuntimeError("QEMU guest agent is not running")):
+            with pytest.raises(ToolError, match="QEMU guest agent is not running"):
+                asyncio.run(mcp.call_tool("run_vm_command", {"name": "Windows", "command": "echo hello"}))
+
+    def test_unknown_handle_is_actionable_tool_error(self):
+        with pytest.raises(ToolError, match="Unknown command_id"):
+            asyncio.run(mcp.call_tool("get_vm_command_result", {"command_id": "missing"}))
+
     def test_awaited_result_through_mcp(self):
         async def scenario():
             result = await mcp.call_tool("run_vm_command", {

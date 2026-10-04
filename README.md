@@ -150,9 +150,9 @@ For longer work, use `wait: false` to receive the handle after launch, then call
 uv run --extra test pytest
 ```
 
-Unit tests mock UTM so they do not require a guest VM. Actual guest execution requires the setup above.
+Unit tests mock UTM so they do not require a guest VM. A separate test exercises actual MCP stdio initialization, tool discovery, actionable validation errors, and continued server responsiveness without mocks. Actual guest execution requires the setup above.
 
-After configuring the agent, run the opt-in live smoke test (prints test output and returns exit code 7 inside the guest):
+After configuring the agent, run the opt-in live smoke test through a real MCP stdio client (prints test output and returns exit code 7 inside the guest):
 
 ```bash
 MCP_UTM_TEST_VM=Ubuntu uv run --extra test pytest tests/test_guest_integration.py
