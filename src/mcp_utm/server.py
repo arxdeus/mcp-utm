@@ -10,8 +10,11 @@ from __future__ import annotations
 from mcp.server import MCPServer
 
 from . import applescript as utm
+from .commands import run_vm_command, get_vm_command_result
 
 mcp = MCPServer("utm")
+mcp.tool(structured_output=True)(run_vm_command)
+mcp.tool(structured_output=True)(get_vm_command_result)
 
 
 @mcp.tool()
