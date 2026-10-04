@@ -152,7 +152,8 @@ async def run_vm_command(
 ) -> dict[str, object]:
     """Run a shell command inside a running UTM guest, not on the host.
 
-    Requires QEMU Guest Agent (not supported by Apple VF macOS guests).
+    Requires a QEMU-backend VM with QEMU Guest Agent. Apple VF guests
+    (including macOS and Linux) need another transport such as SSH.
     Defaults to /bin/sh -c. For Windows use shell='cmd.exe', shell_args=['/c'],
     or shell='powershell.exe', shell_args=['-NoProfile', '-Command'].
     environment is a mapping of guest variable names to values. stdin is text.
@@ -190,6 +191,7 @@ async def run_vm_command(
     script = f'''
     tell application "UTM"
         set vm to virtual machine named {_text(name)}
+        if backend of vm is not qemu then error "Guest shell execution requires a QEMU-backend VM with QEMU Guest Agent. Apple Virtualization guests need SSH or another transport."
         set proc to {execute}
         return id of proc
     end tell

@@ -98,9 +98,9 @@ pip install mcp-utm
 
 ## Running shell commands
 
-Guest execution uses UTM's native [`execute` and `get result` API](https://docs.getutm.app/scripting/reference/), not host shell execution or simulated typing. The VM must be running with **QEMU Guest Agent installed, running, and connected to UTM**. On Debian/Ubuntu guests, install `qemu-guest-agent` and enable/start its service. On Windows, install the QEMU Guest Agent service from the guest tools package. Some agent configurations disable `guest-exec` or `guest-exec-status`, which must be allowed.
+Guest execution uses UTM's native [`execute` and `get result` API](https://docs.getutm.app/scripting/reference/), not host shell execution or simulated typing. The VM must use the **QEMU backend** and be running with **QEMU Guest Agent installed, running, and connected to UTM**. On Debian/Ubuntu guests, install `qemu-guest-agent` and enable/start its service. On Windows, install the QEMU Guest Agent service from the guest tools package. Some agent configurations disable `guest-exec` or `guest-exec-status`, which must be allowed.
 
-**Apple Virtualization macOS guests do not support this native guest-agent route.** Those guests need another transport such as SSH, which these tools do not currently implement. Merely installing SPICE display tools does not guarantee the QEMU Guest Agent is running. See the [UTM scripting examples](https://docs.getutm.app/scripting/cheat-sheet/#execute-commands).
+**Apple Virtualization guests (both macOS and Linux) do not support this native guest-agent route.** Those guests need another transport such as SSH, which these tools do not currently implement. Merely installing SPICE display tools does not guarantee the QEMU Guest Agent is running. See the [UTM scripting examples](https://docs.getutm.app/scripting/cheat-sheet/#execute-commands).
 
 Pass these arguments to `run_vm_command` for a Linux guest:
 
