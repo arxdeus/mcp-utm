@@ -132,6 +132,27 @@ class DriveInfo:
         return {"id": self.id, "removable": self.removable, "host_size_mib": self.host_size_mib}
 
 
+@dataclass
+class USBDeviceInfo:
+    id: int
+    name: str
+    manufacturer: str
+    product: str
+    vendor_id: int
+    product_id: int
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "manufacturer": self.manufacturer,
+            "product": self.product,
+            "vendor_id": self.vendor_id,
+            "product_id": self.product_id,
+            "vendor_product": f"{self.vendor_id:04x}:{self.product_id:04x}",
+        }
+
+
 # ---------------------------------------------------------------------------
 # VM listing and status
 # ---------------------------------------------------------------------------
@@ -570,6 +591,146 @@ def attach_drive(name: str, drive_id: str, source_path: str) -> bool:
     end tell
     '''
     _run(script)
+    return True
+
+
+# ---------------------------------------------------------------------------
+# USB devices
+# ---------------------------------------------------------------------------
+
+_USB_FIELDS_SCRIPT = '''
+            set uId to (id of u) as text
+            set uName to ""
+            set uMfr to ""
+            set uProd to ""
+            set uVid to "0"
+            set uPid to "0"
+            try
+                set uName to (name of u) as text
+            end try
+            try
+                set uMfr to (manufacturer name of u) as text
+            end try
+            try
+                set uProd to (product name of u) as text
+            end try
+            try
+                set uVid to (vendor id of u) as text
+            end try
+            try
+                set uPid to (product id of u) as text
+            end try
+            set output to output & uId & "||" & uName & "||" & uMfr & "||" & uProd & "||" & uVid & "||" & uPid & linefeed
+'''
+
+
+def _validate_usb_id(device_id: int) -> int:
+    try:
+        value = int(device_id)
+    except (TypeError, ValueError):
+        raise ValueError(f"Invalid USB device id: {device_id!r}") from None
+    if value < 0:
+        raise ValueError(f"Invalid USB device id: {device_id!r}")
+    return value
+
+
+def _parse_usb_devices(raw: str) -> list[USBDeviceInfo]:
+    devices = []
+    for line in raw.strip().split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split("||")
+        if len(parts) >= 6:
+            devices.append(USBDeviceInfo(
+                id=_parse_int(parts[0]),
+                name=parts[1],
+                manufacturer=parts[2],
+                product=parts[3],
+                vendor_id=_parse_int(parts[4]),
+                product_id=_parse_int(parts[5]),
+            ))
+    return devices
+
+
+def list_usb_devices(name: str | None = None) -> list[USBDeviceInfo]:
+    """List USB devices.
+
+    Without ``name``, lists host USB devices available for sharing (empty unless
+    a running VM has USB sharing enabled). With ``name``, lists the devices
+    currently connected to that VM.
+    """
+    if name:
+        _validate_vm_name(name)
+        # UTM raises a generic AppleEvent error (-10000) for the per-VM list
+        # when nothing is connected, so resolve the VM first (real errors
+        # surface) and treat a failing list as empty.
+        prelude = f'''
+        set vm to virtual machine named "{_esc(name)}"
+        set vmStatus to status of vm
+        try
+            set devs to usb devices of vm
+        on error
+            set devs to {{}}
+        end try
+'''
+    else:
+        prelude = """
+        set devs to usb devices
+"""
+    script = f'''
+    tell application "UTM"
+        set output to ""
+{prelude}
+        repeat with u in devs
+{_USB_FIELDS_SCRIPT}
+        end repeat
+        return output
+    end tell
+    '''
+    return _parse_usb_devices(_run(script))
+
+
+def connect_usb_device(name: str, device_id: int) -> bool:
+    """Connect a host USB device to a running VM (removes it from the host)."""
+    _validate_vm_name(name)
+    device_id = _validate_usb_id(device_id)
+    script = f'''
+    tell application "UTM"
+        set vm to virtual machine named "{_esc(name)}"
+        if (status of vm as text) is not "started" then error "VM must be running to connect USB devices"
+        set found to missing value
+        repeat with u in usb devices
+            if (id of u) is {device_id} then
+                set found to contents of u
+                exit repeat
+            end if
+        end repeat
+        if found is missing value then error "USB device {device_id} not found on host (is USB sharing enabled on a running VM?)"
+        connect found to vm
+    end tell
+    '''
+    _run(script, timeout=60)
+    return True
+
+
+def disconnect_usb_device(device_id: int) -> bool:
+    """Disconnect a USB device from its guest and return it to the host."""
+    device_id = _validate_usb_id(device_id)
+    script = f'''
+    tell application "UTM"
+        set found to missing value
+        repeat with u in usb devices
+            if (id of u) is {device_id} then
+                set found to contents of u
+                exit repeat
+            end if
+        end repeat
+        if found is missing value then error "USB device {device_id} not found"
+        disconnect found
+    end tell
+    '''
+    _run(script, timeout=60)
     return True
 
 

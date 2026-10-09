@@ -487,3 +487,57 @@ class TestDisplay:
     def test_disable_dynamic(self, mock_run):
         set_vm_display("my-vm", False)
         assert "false" in mock_run.call_args[0][0]
+
+
+# ---------------------------------------------------------------------------
+# USB devices
+# ---------------------------------------------------------------------------
+
+from mcp_utm.applescript import (  # noqa: E402
+    list_usb_devices,
+    connect_usb_device,
+    disconnect_usb_device,
+    USBDeviceInfo,
+)
+
+
+class TestUSB:
+    @patch("mcp_utm.applescript._run")
+    def test_list_host_devices(self, mock_run):
+        mock_run.return_value = "20||YubiKey||Yubico||YubiKey OTP+FIDO||4176||1031\n"
+        devices = list_usb_devices()
+        assert devices == [USBDeviceInfo(20, "YubiKey", "Yubico", "YubiKey OTP+FIDO", 4176, 1031)]
+        assert devices[0].to_dict()["vendor_product"] == "1050:0407"
+        script = mock_run.call_args[0][0]
+        assert "set devs to usb devices" in script
+
+    @patch("mcp_utm.applescript._run")
+    def test_list_vm_devices(self, mock_run):
+        mock_run.return_value = ""
+        assert list_usb_devices("my-vm") == []
+        script = mock_run.call_args[0][0]
+        assert 'virtual machine named "my-vm"' in script
+        assert "set devs to usb devices of vm" in script
+        assert "on error" in script
+
+    @patch("mcp_utm.applescript._run")
+    def test_connect(self, mock_run):
+        assert connect_usb_device("my-vm", 20) is True
+        script = mock_run.call_args[0][0]
+        assert "(id of u) is 20" in script
+        assert "connect found to vm" in script
+
+    @patch("mcp_utm.applescript._run")
+    def test_disconnect(self, mock_run):
+        assert disconnect_usb_device(20) is True
+        script = mock_run.call_args[0][0]
+        assert "(id of u) is 20" in script
+        assert "disconnect found" in script
+
+    def test_bad_ids_and_names(self):
+        with pytest.raises(ValueError):
+            connect_usb_device("my-vm", "20 or true")
+        with pytest.raises(ValueError):
+            disconnect_usb_device(-1)
+        with pytest.raises(ValueError):
+            connect_usb_device('bad"vm', 1)

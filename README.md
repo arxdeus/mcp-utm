@@ -79,6 +79,15 @@ pip install mcp-utm
 | `list_vm_drives` | List attached drives |
 | `attach_drive` | Attach an ISO or disk image |
 
+### USB Devices
+| Tool | Description |
+|------|-------------|
+| `list_usb_devices` | List host USB devices available for sharing, or those connected to a given VM |
+| `connect_usb_device` | Pass a host USB device through to a running VM |
+| `disconnect_usb_device` | Return a USB device from the guest to the host |
+
+USB passthrough requires a running **QEMU backend** VM with USB sharing enabled. UTM only reports host devices while such a VM is running.
+
 ### Portability
 | Tool | Description |
 |------|-------------|

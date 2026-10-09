@@ -239,6 +239,45 @@ def attach_drive(name: str, drive_id: str, source_path: str) -> dict:
 
 
 @mcp.tool()
+def list_usb_devices(name: str | None = None) -> list[dict]:
+    """List USB devices.
+
+    Without a VM name, lists host USB devices that can be shared. UTM only
+    reports these while at least one running QEMU VM has USB sharing enabled.
+    With a VM name, lists the devices currently connected to that VM.
+
+    Args:
+        name: Optional VM name to list only devices connected to that VM
+    """
+    return [d.to_dict() for d in utm.list_usb_devices(name)]
+
+
+@mcp.tool()
+def connect_usb_device(name: str, device_id: int) -> dict:
+    """Connect a host USB device to a running VM (it is removed from the host).
+
+    Requires a QEMU-backend VM with USB sharing enabled.
+
+    Args:
+        name: VM name (must be running)
+        device_id: USB device id (from list_usb_devices)
+    """
+    utm.connect_usb_device(name, device_id)
+    return {"name": name, "device_id": device_id, "connected": True}
+
+
+@mcp.tool()
+def disconnect_usb_device(device_id: int) -> dict:
+    """Disconnect a USB device from its VM and give it back to the host.
+
+    Args:
+        device_id: USB device id (from list_usb_devices)
+    """
+    utm.disconnect_usb_device(device_id)
+    return {"device_id": device_id, "connected": False}
+
+
+@mcp.tool()
 def list_vm_shares(name: str) -> dict:
     """List shared directories (VirtioFS) registered for a VM.
 

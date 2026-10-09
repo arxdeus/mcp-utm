@@ -14,7 +14,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 class TestToolsRegistered:
     def test_tool_count(self):
         tools = mcp._tool_manager.list_tools()
-        assert len(tools) == 24
+        assert len(tools) == 27
 
     def test_expected_tools(self):
         names = {t.name for t in mcp._tool_manager.list_tools()}
@@ -25,6 +25,7 @@ class TestToolsRegistered:
             "add_vm_share", "remove_vm_share", "set_vm_shares", "list_vm_drives",
             "attach_drive", "export_vm", "import_vm", "get_serial_port",
             "run_vm_command", "get_vm_command_result",
+            "list_usb_devices", "connect_usb_device", "disconnect_usb_device",
         }
         assert expected == names
 
